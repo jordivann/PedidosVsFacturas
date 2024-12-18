@@ -39,7 +39,7 @@ def mapear_proveedor(row):
 # PROCESAMOS LA CARPETA CON NOTA DE PEDIDOS
 def procesar_archivos(carpeta):
     columnas = [
-        "FECHA", "COMPRADOR", "LABORATORIO", "DROGUERIA", "Num Cuenta",
+        "FECHA", "COMPRADOR", "LABORATORIO", "IMPORTE PEDIDO", "CANTIDAD PEDIDO", "DROGUERIA", "Num Cuenta",
         "Can", "Codebar", "Producto", "Precio", 
         "drog", "Desc.", "Costo", "Imp. Total"
     ]
@@ -60,14 +60,11 @@ def procesar_archivos(carpeta):
                 print(f"Hoja: {hoja} de {archivo}")
                 try:
                     fecha = df.iloc[0, 8]
-                    print('fecha ', fecha)
                     comprador = df.iloc[4, 2]
-                    print('comprador ', comprador)
+                    importe_pedido = df.iloc[4,5]
+                    cantidad_pedido = df.iloc[5,5]
                     laboratorio = df.iloc[0, 4]
-                    print('labo ', laboratorio)
                     drogueria = df.iloc[2, 4]
-                    print('drogue ', drogueria)
-
                     # Dividir DROGUERIA en nombre y número de cuenta
                     nombre_drogueria, num_cuenta = dividir_drogueria(drogueria)
                     
@@ -76,8 +73,9 @@ def procesar_archivos(carpeta):
                     for _, fila in tabla.iterrows():
                         if fila["Can"] == 0:
                             continue
+                        codebar = str(fila["Codebar"])
                         datos_consolidados.append([
-                            fecha, comprador, laboratorio, nombre_drogueria, num_cuenta,
+                            fecha, comprador, laboratorio,importe_pedido , cantidad_pedido, nombre_drogueria, num_cuenta,
                             fila["Can"], fila["Codebar"], fila["Producto"],
                             fila["Precio"], fila["drog"], 
                             fila["Desc."], fila["Costo"], fila["Imp. Total"]
@@ -101,18 +99,24 @@ def procesar_archivos(carpeta):
         messagebox.showwarning("Cancelado", "No se guardó el archivo.")
         return None
 
+
 def dividir_drogueria(drogueria):
     """
-    Divide la columna DROGUERIA en nombre y número de cuenta
+    Divide la columna DROGUERIA en nombre y número de cuenta.
+    La parte del número debe ser un número entero o decimal válido.
     """
     if pd.notnull(drogueria):
-        # Intentar separar por espacio y detectar si hay un número al final
-        partes = str(drogueria).rsplit(' ', 1)  # Divide solo una vez desde el final
-        if len(partes) == 2 and partes[1].isdigit():
-            return partes[0], partes[1]  # Retorna nombre y número
-        return drogueria, None  # Si no hay número, retorna el texto completo y None
+        drogueria = str(drogueria).strip()  # Aseguramos que no haya espacios iniciales o finales
+        # Expresión regular para separar texto y número al final
+        match = re.match(r'^(.*?)(\d+)$', drogueria)
+        
+        if match:
+            nombre = match.group(1).strip()  # Todo antes del número
+            num_cuenta = int(match.group(2))  # Convertir el número a entero
+            return nombre, num_cuenta
+        
+        return drogueria, None  # Si no hay número al final
     return None, None
-
 # Función para seleccionar la carpeta y procesar los archivos
 def seleccionar_carpeta():
     carpeta = filedialog.askdirectory(title="Seleccionar Carpeta")
@@ -139,7 +143,6 @@ def filtrar_por_proveedor(archivo):
                 )
 
                 # Imprimir columnas para verificar
-                print("Columnas:", list(df.columns))
             except Exception as e:
                 # Si falla, intentar con delimitador alternativo
                 print(f"Error al leer el archivo: {e}")
